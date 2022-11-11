@@ -13,6 +13,7 @@ import numpy
 from PIL import Image
 from PIL import ImageEnhance
 
+import requests, hashlib
 from requests import session, post, adapters
 adapters.DEFAULT_RETRIES = 5
 
@@ -234,15 +235,25 @@ class Zlapp(Fudan):
                     }
                 )
             else:
+                g = json.loads(self.last_info["geo_api_info"])
+                import random
+                offset1 = (-1)**random.randint(0, 1) * random.random() * 0.0001
+                offset2 = (-1)**random.randint(0, 1) * random.random() * 0.0001
+                g["position"]["Q"] += offset1
+                g["position"]["R"] += offset2
+                g["position"]["lng"] = round(g["position"]["lng"]  + offset1, 6) 
+                g["position"]["lat"] = round(g["position"]["lat"]  + offset2, 6) 
+                new_g = json.dumps(g, ensure_ascii=False)
                 self.last_info.update(
                     {
                         "tw": "13",
                         "province": province,
                         "city": city,
                         "area": " ".join((province, city, district)),
-                        #"sfzx": "1",  # 是否在校
+                        # "sfzx": "1",  # 是否在校
                         #"fxyy": "",  # 返校原因
                         "code": code,
+                        "geo_api_info": new_g,
                     }
                 )
             # print(self.last_info)
@@ -294,6 +305,13 @@ def get_account():
 if __name__ == '__main__':
     uid, psw = get_account()
     # print(uid, psw)
+
+    # check the web site not change 
+    pafd_js_digest = b'\x87\x15]\xdemq\x90\xcbi\x8e\x95\x1b\xc9\xdbu\x19Z\x94\xdfN\x80mN^\xb8R/\x99\x15\xaa6\x84\xe9\xb2\xcfK\xa2\xf1e\xdam\xc3\xefg\x11?j\x0e\xe80nM\xe5\xc5\x1d\\\x94T\x05}\x91tXZ'
+    res = requests.get("https://zlapp.fudan.edu.cn/site/static/js/143.e9ce02f4909e1fa02d1c.js?v=1666686432229")
+    a = hashlib.sha512(res.text.encode()).digest()
+    assert a == pafd_js_digest, "should be equal"
+
     zlapp_login = 'https://uis.fudan.edu.cn/authserver/login?' \
                   'service=https://zlapp.fudan.edu.cn/site/ncov/fudanDaily'
     code_url = "https://zlapp.fudan.edu.cn/backend/default/code"
